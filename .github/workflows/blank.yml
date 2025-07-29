@@ -37,3 +37,4 @@ jobs:
         echo "Password: Passw0rd123"
         echo "Connect with: ssh runner@<server-ip> -p 80"
         echo "==================================="
+        echo "Server public IP:" curl -s ifconfig.me
