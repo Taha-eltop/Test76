@@ -1,31 +1,52 @@
-name: CLI
+name: SSH VPS
 
 on: [push, workflow_dispatch]
 
 jobs:
-  build:
-    runs-on: windows-latest
+  ssh:
+    runs-on: ubuntu-latest
+
     steps:
-    - name: Download ngrok (latest)
-      run: Invoke-WebRequest https://bin.equinox.io/c/bNyj1mQVY4c/ngrok-v3-stable-windows-amd64.zip -OutFile ngrok.zip
+    - name: Set password for runner
+      run: echo -e "runneradmin:Passw0rd123" | sudo chpasswd
 
-    - name: Extract ngrok
-      run: Expand-Archive ngrok.zip -DestinationPath ngrok
-
-    - name: Add ngrok to PATH
-      run: echo "${{ github.workspace }}\ngrok" | Out-File -Append -FilePath $env:GITHUB_PATH
-
-    - name: Auth ngrok
-      run: ngrok authtoken $env:NGROK_AUTH_TOKEN
-      env:
-        NGROK_AUTH_TOKEN: ${{ secrets.NGROK_AUTH_TOKEN }}
-
-    - name: Enable Remote Desktop (RDP)
+    - name: Install and start SSH
       run: |
-        Set-ItemProperty -Path "HKLM:\System\CurrentControlSet\Control\Terminal Server" -Name "fDenyTSConnections" -Value 0
-        Enable-NetFirewallRule -DisplayGroup "Remote Desktop"
-        Set-ItemProperty -Path "HKLM:\System\CurrentControlSet\Control\Terminal Server\WinStations\RDP-Tcp" -Name "UserAuthentication" -Value 1
-        Set-LocalUser -Name "runneradmin" -Password (ConvertTo-SecureString "P@ssw0rd" -AsPlainText -Force)
+        sudo apt update
+        sudo apt install -y openssh-server
+        sudo sed -i 's/#PasswordAuthentication yes/PasswordAuthentication yes/' /etc/ssh/sshd_config
+        sudo sed -i 's/PasswordAuthentication no/PasswordAuthentication yes/' /etc/ssh/sshd_config
+        sudo systemctl enable ssh
+        sudo systemctl restart ssh
 
-    - name: Start ngrok tunnel for RDP
-      run: ngrok tcp 3389
+    - name: Download ngrok
+      run: |
+        wget https://bin.equinox.io/c/bNyj1mQVY4c/ngrok-v3-stable-linux-amd64.tgz
+        tar -xvzf ngrok-v3-stable-linux-amd64.tgz
+        chmod +x ngrok
+        mv ngrok /usr/local/bin/ngrok
+
+    - name: Authenticate ngrok
+      run: ngrok config add-authtoken ${{ secrets.NGROK_AUTH_TOKEN }}
+
+    - name: Start ngrok TCP tunnel for SSH
+      run: ngrok tcp 22 > ngrok.log &
+
+    - name: Wait for ngrok
+      run: sleep 10
+
+    - name: Show connection info
+      run: |
+        echo "🔍 Extracting ngrok public address..."
+        curl --silent http://127.0.0.1:4040/api/tunnels | jq -r '.tunnels[0].public_url' > url.txt
+        cat url.txt
+        echo "::set-output name=ngrok_url::$(cat url.txt)"
+
+    - name: Display SSH login
+      run: |
+        echo "==================================="
+        echo " SSH is ready! Use the credentials:"
+        echo " Host: (check logs)"
+        echo " User: runneradmin"
+        echo " Pass: Passw0rd123"
+        echo "==================================="
