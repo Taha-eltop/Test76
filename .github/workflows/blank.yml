@@ -7,8 +7,8 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - name: Set password for runner
-      run: echo -e "runneradmin:Passw0rd123" | sudo chpasswd
+    - name: Set password for default user
+      run: echo -e "runner:Passw0rd123" | sudo chpasswd
 
     - name: Install and start SSH
       run: |
@@ -17,36 +17,31 @@ jobs:
         sudo sed -i 's/#PasswordAuthentication yes/PasswordAuthentication yes/' /etc/ssh/sshd_config
         sudo sed -i 's/PasswordAuthentication no/PasswordAuthentication yes/' /etc/ssh/sshd_config
         sudo systemctl enable ssh
-        sudo systemctl restart ssh
+        sudo service ssh restart
 
     - name: Download ngrok
       run: |
         wget https://bin.equinox.io/c/bNyj1mQVY4c/ngrok-v3-stable-linux-amd64.tgz
         tar -xvzf ngrok-v3-stable-linux-amd64.tgz
         chmod +x ngrok
-        mv ngrok /usr/local/bin/ngrok
+        sudo mv ngrok /usr/local/bin/ngrok
 
     - name: Authenticate ngrok
       run: ngrok config add-authtoken ${{ secrets.NGROK_AUTH_TOKEN }}
 
     - name: Start ngrok TCP tunnel for SSH
       run: ngrok tcp 22 > ngrok.log &
-
+    
     - name: Wait for ngrok
       run: sleep 10
 
-    - name: Show connection info
+    - name: Display connection info
       run: |
-        echo "🔍 Extracting ngrok public address..."
-        curl --silent http://127.0.0.1:4040/api/tunnels | jq -r '.tunnels[0].public_url' > url.txt
-        cat url.txt
-        echo "::set-output name=ngrok_url::$(cat url.txt)"
-
-    - name: Display SSH login
-      run: |
+        curl -s http://127.0.0.1:4040/api/tunnels | jq -r '.tunnels[0].public_url' > url.txt
         echo "==================================="
-        echo " SSH is ready! Use the credentials:"
-        echo " Host: (check logs)"
-        echo " User: runneradmin"
+        echo " SSH is ready!"
+        echo " Host: $(cat url.txt | cut -d '/' -f 3 | cut -d ':' -f 1)"
+        echo " Port: $(cat url.txt | cut -d ':' -f 3)"
+        echo " User: runner"
         echo " Pass: Passw0rd123"
         echo "==================================="
