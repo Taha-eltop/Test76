@@ -1,46 +1,78 @@
-name: SSH over SSL Port 80
+name: Setup SSH Server on Port 80
 
-on: [push, workflow_dispatch]
+on: 
+  push:
+  workflow_dispatch:
 
 jobs:
-  sshssl:
+  setup_ssh:
     runs-on: ubuntu-latest
 
     steps:
-    - name: Set password for runner
+    - name: Set password for runner user
       run: echo -e "runner:Passw0rd123" | sudo chpasswd
 
-    - name: Install and start SSH
+    - name: Install OpenSSH Server
       run: |
         sudo apt update
         sudo apt install -y openssh-server
+
+    - name: Configure SSH to use port 80 and enable password authentication
+      run: |
+        sudo sed -i 's/#Port 22/Port 80/' /etc/ssh/sshd_config
+        sudo sed -i 's/Port 22/Port 80/' /etc/ssh/sshd_config
         sudo sed -i 's/#PasswordAuthentication yes/PasswordAuthentication yes/' /etc/ssh/sshd_config
         sudo sed -i 's/PasswordAuthentication no/PasswordAuthentication yes/' /etc/ssh/sshd_config
         sudo systemctl enable ssh
-        sudo service ssh restart
+        sudo systemctl restart ssh
 
-    - name: Download ngrok
-      run: |
-        wget https://bin.equinox.io/c/bNyj1mQVY4c/ngrok-v3-stable-linux-amd64.tgz
-        tar -xvzf ngrok-v3-stable-linux-amd64.tgz
-        sudo mv ngrok /usr/local/bin/ngrok
-        chmod +x /usr/local/bin/ngrok
+    - name: Confirm SSH is listening on port 80
+      run: sudo ss -tlnp | grep ":80"
 
-    - name: Authenticate ngrok
-      run: ngrok config add-authtoken ${{ secrets.NGROK_AUTH_TOKEN }}
-
-    - name: Start ngrok TCP tunnel to SSH on port 80
-      run: ngrok tcp --region=eu --remote-addr 0.tcp.eu.ngrok.io:80 22 > ngrok.log &
-    
-    - name: Wait for ngrok to initialize
-      run: sleep 10
-
-    - name: Output tunnel info
+    - name: Show SSH connection info
       run: |
         echo "==================================="
-        echo "SSH ready on port 80 over ngrok"
+        echo "SSH Server ready on port 80"
         echo "Username: runner"
         echo "Password: Passw0rd123"
-        echo "Server: 0.tcp.eu.ngrok.io"
-        echo "Port: 80"
+        echo "Connect with: ssh runner@<server-ip> -p 80"
+        echo "==================================="
+name: Setup SSH Server on Port 80
+
+on: 
+  push:
+  workflow_dispatch:
+
+jobs:
+  setup_ssh:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Set password for runner user
+      run: echo -e "runner:Passw0rd123" | sudo chpasswd
+
+    - name: Install OpenSSH Server
+      run: |
+        sudo apt update
+        sudo apt install -y openssh-server
+
+    - name: Configure SSH to use port 80 and enable password authentication
+      run: |
+        sudo sed -i 's/#Port 22/Port 80/' /etc/ssh/sshd_config
+        sudo sed -i 's/Port 22/Port 80/' /etc/ssh/sshd_config
+        sudo sed -i 's/#PasswordAuthentication yes/PasswordAuthentication yes/' /etc/ssh/sshd_config
+        sudo sed -i 's/PasswordAuthentication no/PasswordAuthentication yes/' /etc/ssh/sshd_config
+        sudo systemctl enable ssh
+        sudo systemctl restart ssh
+
+    - name: Confirm SSH is listening on port 80
+      run: sudo ss -tlnp | grep ":80"
+
+    - name: Show SSH connection info
+      run: |
+        echo "==================================="
+        echo "SSH Server ready on port 80"
+        echo "Username: runner"
+        echo "Password: Passw0rd123"
+        echo "Connect with: ssh runner@<server-ip> -p 80"
         echo "==================================="
