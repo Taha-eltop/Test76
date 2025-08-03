@@ -25,5 +25,10 @@ jobs:
         Set-ItemProperty -Path "HKLM:\System\CurrentControlSet\Control\Terminal Server\WinStations\RDP-Tcp" -name "UserAuthentication" -Value 1
         Set-LocalUser -Name "runneradmin" -Password (ConvertTo-SecureString "P@ssw0rd" -AsPlainText -Force)
 
+    - name: Restart RDP Service (simulate reboot)
+      run: |
+        Stop-Service -Name TermService -Force
+        Start-Service -Name TermService
+
     - name: Start Ngrok Tunnel (RDP 3389)
       run: ngrok.exe tcp 3389
