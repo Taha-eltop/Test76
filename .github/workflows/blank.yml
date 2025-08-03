@@ -35,14 +35,19 @@ jobs:
           Set-LocalUser -Name "runneradmin" -Password $Password
         shell: pwsh
 
-      - name: 🚪 Start ngrok and show RDP address
+      - name: 🚪 Start ngrok and keep session alive
         run: |
-          $ngrokOutput = & ngrok\ngrok.exe tcp 3389 --log=stdout --log-format=logfmt 2>&1
-          $match = $ngrokOutput -match 'url=tcp://(?<host>[^:]+):(?<port>\d+)' | Out-Null
-          $host = $Matches['host']
-          $port = $Matches['port']
-          Write-Host "🌐 Connect to this RDP address: ${host}:${port}"
+          $script = @"
+          \$ngrokOutput = & ngrok\ngrok.exe tcp 3389 --log=stdout --log-format=logfmt 2>&1
+          \$match = \$ngrokOutput -match 'url=tcp://(?<host>[^:]+):(?<port>\d+)' | Out-Null
+          \$host = \$Matches['host']
+          \$port = \$Matches['port']
+          Write-Host "🌐 Connect to this RDP address: \${host}:\${port}"
           Write-Host "👤 Username: runneradmin"
           Write-Host "🔑 Password: P@ssw0rd123!"
-          Start-Sleep -Seconds 21600  # Keep runner alive for 6 hours
+          Start-Sleep -Seconds 21600
+          "@
+          $bytes = [System.Text.Encoding]::Unicode.GetBytes($script)
+          $encoded = [Convert]::ToBase64String($bytes)
+          powershell.exe -EncodedCommand $encoded
         shell: pwsh
