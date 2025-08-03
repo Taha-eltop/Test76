@@ -1,53 +1,54 @@
-name: RDP with ngrok
-
-on:
-  workflow_dispatch:
+name: CLI
+on: [push, workflow_dispatch]
 
 jobs:
   build:
     runs-on: windows-latest
-
     steps:
-      - name: 🔽 Download ngrok v3
-        run: |
-          Invoke-WebRequest https://bin.equinox.io/c/bNyj1mQVY4c/ngrok-v3-stable-windows-amd64.zip -OutFile ngrok.zip
-          Expand-Archive ngrok.zip -DestinationPath ngrok
-          echo "${{ github.workspace }}\ngrok" | Out-File -Append -FilePath $env:GITHUB_PATH
-        shell: pwsh
+    - name: Download
+      run: Invoke-WebRequest https://bin.equinox.io/c/4VmDzA7iaHb/ngrok-stable-windows-amd64.zip -OutFile ngrok.zip
 
-      - name: 🔐 Add ngrok authtoken
-        run: |
-          ngrok config add-authtoken "$env:NGROK_AUTH_TOKEN"
-        env:
-          NGROK_AUTH_TOKEN: ${{ secrets.NGROK_AUTH_TOKEN }}
-        shell: pwsh
+    - name: Extract
+      run: Expand-Archive ngrok.zip
 
-      - name: 🔓 Enable RDP and firewall
-        run: |
-          Set-ItemProperty -Path "HKLM:\System\CurrentControlSet\Control\Terminal Server" -Name "fDenyTSConnections" -Value 0
-          Enable-NetFirewallRule -DisplayGroup "Remote Desktop"
-          Set-ItemProperty -Path "HKLM:\System\CurrentControlSet\Control\Terminal Server\WinStations\RDP-Tcp" -Name "UserAuthentication" -Value 1
-        shell: pwsh
+    - name: Auth
+      run: .\ngrok\ngrok.exe authtoken $env:NGROK_AUTH_TOKEN
+      env:
+        NGROK_AUTH_TOKEN: ${{ secrets.NGROK_AUTH_TOKEN }}
 
-      - name: 🔑 Set runneradmin password
-        run: |
-          $Password = ConvertTo-SecureString "P@ssw0rd123!" -AsPlainText -Force
-          Set-LocalUser -Name "runneradmin" -Password $Password
-        shell: pwsh
+    - name: Enable TS
+      run: |
+        Set-ItemProperty -Path "HKLM:\System\CurrentControlSet\Control\Terminal Server" -name "fDenyTSConnections" -Value 0
+        Enable-NetFirewallRule -DisplayGroup "Remote Desktop"
+        Set-ItemProperty -Path "HKLM:\System\CurrentControlSet\Control\Terminal Server\WinStations\RDP-Tcp" -name "UserAuthentication" -Value 1
+        Set-LocalUser -Name "runneradmin" -Password (ConvertTo-SecureString "P@ssw0rd" -AsPlainText -Force)
 
-      - name: 🚪 Start ngrok and keep session alive
-        run: |
-          $script = @"
-          \$ngrokOutput = & ngrok\ngrok.exe tcp 3389 --log=stdout --log-format=logfmt 2>&1
-          \$match = \$ngrokOutput -match 'url=tcp://(?<host>[^:]+):(?<port>\d+)' | Out-Null
-          \$host = \$Matches['host']
-          \$port = \$Matches['port']
-          Write-Host "🌐 Connect to this RDP address: \${host}:\${port}"
-          Write-Host "👤 Username: runneradmin"
-          Write-Host "🔑 Password: P@ssw0rd123!"
-          Start-Sleep -Seconds 21600
-          "@
-          $bytes = [System.Text.Encoding]::Unicode.GetBytes($script)
-          $encoded = [Convert]::ToBase64String($bytes)
-          powershell.exe -EncodedCommand $encoded
-        shell: pwsh
+    - name: Create Tunnel
+      run: .\ngrok\ngrok.exe tcp 3389
+name: CLI
+on: [push, workflow_dispatch]
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+    - name: Download
+      run: Invoke-WebRequest https://bin.equinox.io/c/4VmDzA7iaHb/ngrok-stable-windows-amd64.zip -OutFile ngrok.zip
+
+    - name: Extract
+      run: Expand-Archive ngrok.zip
+
+    - name: Auth
+      run: .\ngrok\ngrok.exe authtoken $env:NGROK_AUTH_TOKEN
+      env:
+        NGROK_AUTH_TOKEN: ${{ secrets.NGROK_AUTH_TOKEN }}
+
+    - name: Enable TS
+      run: |
+        Set-ItemProperty -Path "HKLM:\System\CurrentControlSet\Control\Terminal Server" -name "fDenyTSConnections" -Value 0
+        Enable-NetFirewallRule -DisplayGroup "Remote Desktop"
+        Set-ItemProperty -Path "HKLM:\System\CurrentControlSet\Control\Terminal Server\WinStations\RDP-Tcp" -name "UserAuthentication" -Value 1
+        Set-LocalUser -Name "runneradmin" -Password (ConvertTo-SecureString "P@ssw0rd" -AsPlainText -Force)
+
+    - name: Create Tunnel
+      run: .\ngrok\ngrok.exe tcp 3389
