@@ -33,11 +33,12 @@ jobs:
           Set-LocalUser -Name "runneradmin" -Password $Password
         shell: pwsh
 
-      - name: Start ngrok TCP tunnel on 3389
+      - name: Start ngrok and print tunnel address
         run: |
-          Start-Process -NoNewWindow -FilePath ngrok\ngrok.exe -ArgumentList "tcp 3389"
-          Start-Sleep -Seconds 5
-          $tunnel = Invoke-RestMethod http://127.0.0.1:4040/api/tunnels
-          $publicUrl = $tunnel.tunnels[0].public_url
-          Write-Host "🌐 Connect to this RDP address: $($publicUrl.Replace('tcp://', ''))"
+          $ngrokOutput = & ngrok\ngrok.exe tcp 3389 --log=stdout --log-format=logfmt 2>&1
+          $match = $ngrokOutput -match 'url=tcp://(?<host>[^:]+):(?<port>\d+)' | Out-Null
+          $host = $Matches['host']
+          $port = $Matches['port']
+          Write-Host "🌐 Connect to this RDP address: $host:$port"
         shell: pwsh
+
