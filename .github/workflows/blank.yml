@@ -7,7 +7,7 @@ jobs:
     steps:
     - name: Download Latest Ngrok (v3+)
       run: |
-        Invoke-WebRequest -Uri "https://ngrok-agent.s3.amazonaws.com/ngrok-windows-amd64.zip" -OutFile ngrok.zip
+        Invoke-WebRequest -Uri "https://bin.equinox.io/c/bNyj1mQVY4c/ngrok-v3-stable-windows-amd64.zip" -OutFile ngrok.zip
         Expand-Archive ngrok.zip -DestinationPath ngrok
 
     - name: Add Ngrok to PATH
