@@ -1,53 +1,48 @@
 name: RDP with ngrok
-on: [push]
+
+on:
+  workflow_dispatch:
 
 jobs:
   build:
     runs-on: windows-latest
 
     steps:
-      - name: Download ngrok v3
+      - name: 🔽 Download ngrok v3
         run: |
           Invoke-WebRequest https://bin.equinox.io/c/bNyj1mQVY4c/ngrok-v3-stable-windows-amd64.zip -OutFile ngrok.zip
           Expand-Archive ngrok.zip -DestinationPath ngrok
           echo "${{ github.workspace }}\ngrok" | Out-File -Append -FilePath $env:GITHUB_PATH
         shell: pwsh
 
-      - name: Add ngrok authtoken
+      - name: 🔐 Add ngrok authtoken
         run: |
-          ngrok config add-authtoken $env:NGROK_AUTH_TOKEN
+          ngrok config add-authtoken "$env:NGROK_AUTH_TOKEN"
         env:
           NGROK_AUTH_TOKEN: ${{ secrets.NGROK_AUTH_TOKEN }}
         shell: pwsh
 
-      - name: Enable RDP and firewall
+      - name: 🔓 Enable RDP and firewall
         run: |
           Set-ItemProperty -Path "HKLM:\System\CurrentControlSet\Control\Terminal Server" -Name "fDenyTSConnections" -Value 0
           Enable-NetFirewallRule -DisplayGroup "Remote Desktop"
           Set-ItemProperty -Path "HKLM:\System\CurrentControlSet\Control\Terminal Server\WinStations\RDP-Tcp" -Name "UserAuthentication" -Value 1
         shell: pwsh
 
-      - name: Set password for runneradmin
+      - name: 🔑 Set runneradmin password
         run: |
           $Password = ConvertTo-SecureString "P@ssw0rd123!" -AsPlainText -Force
           Set-LocalUser -Name "runneradmin" -Password $Password
         shell: pwsh
 
-      - name: Start ngrok and print tunnel address
+      - name: 🚪 Start ngrok and show RDP address
         run: |
           $ngrokOutput = & ngrok\ngrok.exe tcp 3389 --log=stdout --log-format=logfmt 2>&1
           $match = $ngrokOutput -match 'url=tcp://(?<host>[^:]+):(?<port>\d+)' | Out-Null
           $host = $Matches['host']
           $port = $Matches['port']
-          Write-Host "🌐 Connect to this RDP address: $host:$port"
-        shell: pwsh- name: Start ngrok and keep runner alive
-  run: |
-    $ngrokOutput = & ngrok\ngrok.exe tcp 3389 --log=stdout --log-format=logfmt 2>&1
-    $match = $ngrokOutput -match 'url=tcp://(?<host>[^:]+):(?<port>\d+)' | Out-Null
-    $host = $Matches['host']
-    $port = $Matches['port']
-    Write-Host "🌐 Connect to this RDP address: ${host}:${port}"
-    Start-Sleep -Seconds 21600  # Keep session alive for 6 hours
-  shell: pwsh
-
-
+          Write-Host "🌐 Connect to this RDP address: ${host}:${port}"
+          Write-Host "👤 Username: runneradmin"
+          Write-Host "🔑 Password: P@ssw0rd123!"
+          Start-Sleep -Seconds 21600  # Keep runner alive for 6 hours
+        shell: pwsh
