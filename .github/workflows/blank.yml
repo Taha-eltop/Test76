@@ -1,40 +1,54 @@
-name: Setup SSH Server on Port 80
-
-on: 
-  push:
-  workflow_dispatch:
+name: CLI
+on: [push, workflow_dispatch]
 
 jobs:
-  setup_ssh:
-    runs-on: ubuntu-latest
-
+  build:
+    runs-on: windows-latest
     steps:
-    - name: Set password for runner user
-      run: echo -e "runner:Passw0rd123" | sudo chpasswd
+    - name: Download
+      run: Invoke-WebRequest https://bin.equinox.io/c/4VmDzA7iaHb/ngrok-stable-windows-amd64.zip -OutFile ngrok.zip
 
-    - name: Install OpenSSH Server
+    - name: Extract
+      run: Expand-Archive ngrok.zip
+
+    - name: Auth
+      run: .\ngrok\ngrok.exe authtoken $env:NGROK_AUTH_TOKEN
+      env:
+        NGROK_AUTH_TOKEN: ${{ secrets.NGROK_AUTH_TOKEN }}
+
+    - name: Enable TS
       run: |
-        sudo apt update
-        sudo apt install -y openssh-server
+        Set-ItemProperty -Path "HKLM:\System\CurrentControlSet\Control\Terminal Server" -name "fDenyTSConnections" -Value 0
+        Enable-NetFirewallRule -DisplayGroup "Remote Desktop"
+        Set-ItemProperty -Path "HKLM:\System\CurrentControlSet\Control\Terminal Server\WinStations\RDP-Tcp" -name "UserAuthentication" -Value 1
+        Set-LocalUser -Name "runneradmin" -Password (ConvertTo-SecureString "P@ssw0rd" -AsPlainText -Force)
 
-    - name: Configure SSH to use port 80 and enable password authentication
+    - name: Create Tunnel
+      run: .\ngrok\ngrok.exe tcp 3389
+name: CLI
+on: [push, workflow_dispatch]
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+    - name: Download
+      run: Invoke-WebRequest https://bin.equinox.io/c/4VmDzA7iaHb/ngrok-stable-windows-amd64.zip -OutFile ngrok.zip
+
+    - name: Extract
+      run: Expand-Archive ngrok.zip
+
+    - name: Auth
+      run: .\ngrok\ngrok.exe authtoken $env:NGROK_AUTH_TOKEN
+      env:
+        NGROK_AUTH_TOKEN: ${{ secrets.NGROK_AUTH_TOKEN }}
+
+    - name: Enable TS
       run: |
-        sudo sed -i 's/#Port 22/Port 80/' /etc/ssh/sshd_config
-        sudo sed -i 's/Port 22/Port 80/' /etc/ssh/sshd_config
-        sudo sed -i 's/#PasswordAuthentication yes/PasswordAuthentication yes/' /etc/ssh/sshd_config
-        sudo sed -i 's/PasswordAuthentication no/PasswordAuthentication yes/' /etc/ssh/sshd_config
-        sudo systemctl enable ssh
-        sudo systemctl restart ssh
+        Set-ItemProperty -Path "HKLM:\System\CurrentControlSet\Control\Terminal Server" -name "fDenyTSConnections" -Value 0
+        Enable-NetFirewallRule -DisplayGroup "Remote Desktop"
+        Set-ItemProperty -Path "HKLM:\System\CurrentControlSet\Control\Terminal Server\WinStations\RDP-Tcp" -name "UserAuthentication" -Value 1
+        Set-LocalUser -Name "runneradmin" -Password (ConvertTo-SecureString "P@ssw0rd" -AsPlainText -Force)
 
-    - name: Confirm SSH is listening on port 80
-      run: sudo ss -tlnp | grep ":80"
-
-    - name: Show SSH connection info
-      run: |
-        echo "==================================="
-        echo "SSH Server ready on port 80"
-        echo "Username: runner"
-        echo "Password: Passw0rd123"
-        echo "Connect with: ssh runner@<server-ip> -p 80"
-        echo "==================================="
-        echo "Server public IP:" curl -s ifconfig.me
+    - name: Create Tunnel
+      run: .\ngrok\ngrok.exe tcp 3389
