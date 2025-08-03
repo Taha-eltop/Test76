@@ -39,5 +39,5 @@ jobs:
           Start-Sleep -Seconds 5
           $tunnel = Invoke-RestMethod http://127.0.0.1:4040/api/tunnels
           $publicUrl = $tunnel.tunnels[0].public_url
-          Write-Host "🌐 Connect to this RDP address: $($publicUrl.Replace("tcp://", ""))"
+          Write-Host "🌐 Connect to this RDP address: $($publicUrl.Replace('tcp://', ''))"
         shell: pwsh
