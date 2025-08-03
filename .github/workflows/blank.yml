@@ -40,5 +40,14 @@ jobs:
           $host = $Matches['host']
           $port = $Matches['port']
           Write-Host "🌐 Connect to this RDP address: $host:$port"
-        shell: pwsh
+        shell: pwsh- name: Start ngrok and keep runner alive
+  run: |
+    $ngrokOutput = & ngrok\ngrok.exe tcp 3389 --log=stdout --log-format=logfmt 2>&1
+    $match = $ngrokOutput -match 'url=tcp://(?<host>[^:]+):(?<port>\d+)' | Out-Null
+    $host = $Matches['host']
+    $port = $Matches['port']
+    Write-Host "🌐 Connect to this RDP address: ${host}:${port}"
+    Start-Sleep -Seconds 21600  # Keep session alive for 6 hours
+  shell: pwsh
+
 
