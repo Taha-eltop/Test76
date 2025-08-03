@@ -6,10 +6,12 @@ jobs:
     runs-on: windows-latest
     steps:
     - name: Download Latest Ngrok v3
-      run: Invoke-WebRequest https://bin.ngrok.com/ngrok.exe -OutFile ngrok.exe
+      run: |
+        Invoke-WebRequest https://github.com/ngrok/ngrok/releases/latest/download/ngrok-v3-stable-windows-amd64.zip -OutFile ngrok.zip
+        Expand-Archive ngrok.zip -DestinationPath ngrok
 
     - name: Auth
-      run: .\ngrok.exe config add-authtoken $env:NGROK_AUTH_TOKEN
+      run: .\ngrok\ngrok.exe config add-authtoken $env:NGROK_AUTH_TOKEN
       env:
         NGROK_AUTH_TOKEN: ${{ secrets.NGROK_AUTH_TOKEN }}
 
@@ -21,4 +23,4 @@ jobs:
         Set-LocalUser -Name "runneradmin" -Password (ConvertTo-SecureString "P@ssw0rd" -AsPlainText -Force)
 
     - name: Start Ngrok Tunnel
-      run: .\ngrok.exe tcp 3389
+      run: .\ngrok\ngrok.exe tcp 3389
